@@ -310,5 +310,111 @@ getExplanationText = "This proof works by testing the minimax algorithm on every
 prove :: IO ()
 prove = putStr $ getExplanationText ++ showProofsForEmptyList 
 
+--------------------------------------------------------------------------------
+-----------EXTRA CREDIT ZONE----------------------------------------------------
+--------------------------------------------------------------------------------
+
+writePSFile :: IO ()
+writePSFile = writeFile "./test.ps" getPS
+
+--(makeO 3 3 1)
+--(makeX 2 2 4 4)
+--729 243 81 27 9 3
+getPS :: String
+getPS = getHeader ++ (drawGameTrees $ drawRed freshBoard 2 243) ++ getIntroStuff  ++ "showpage"
+--getPS = getHeader ++ getIntroStuff ++ (getABoard 0 729) ++ (getABoard 0 243) ++ (getABoard 0 81) ++ (getABoard 0 27) ++ (getABoard 0 9)  ++ (getABoard 0 3) ++ "showpage"
+
+drawBoard :: Board -> Int -> Int -> Int -> String
+drawBoard [] uBound _ gc = getABoard 0 uBound gc
+drawBoard (f:fs) uBound c gc
+  | f == R = (makeX ((x*d)+xf) ((y*d)+yf) (((x+1)*d)+xf) (((y+1)*d)+yf)) ++ drawBoard fs uBound (c-1) gc
+  | f == G = (makeO (((x*d)+div d 2)+xf) ((div (y*d) 2)+yf) (div d 2)) ++ drawBoard fs uBound (c-1) gc
+  | f == B = "" ++ drawBoard fs uBound (c-1) gc
+    where d = div uBound 3
+          x = getX c
+          y = getY c
+          xf = uBound * getX gc
+          yf = uBound * getY gc
+
+getX :: Int -> Int
+getX 8 = 0
+getX 5 = 0
+getX 2 = 0
+getX 7 = 1
+getX 4 = 1
+getX 1 = 1
+getX 6 = 2
+getX 3 = 2
+getX 0 = 2
+getX x = 0
+
+getY :: Int -> Int
+getY 8 = 2
+getY 7 = 2
+getY 6 = 2
+getY 5 = 1
+getY 4 = 1
+getY 3 = 1
+getY 2 = 0
+getY 1 = 0
+getY 0 = 0
+getY x = 0
+
+getABoard :: Int -> Int -> Int -> String
+getABoard u l c = unlines [makeBox (x+xk) (y+yk) (x+w+xk) (x+w+yk) ++ "\n" | x <- [u,(u+w)..(l-1)] , y <- [u,(u+w)..l]]
+  where d = div (l - u) w
+        w = div l 3
+        xk = l * getX c
+        yk = l * getY c
+
+getHeader :: String
+getHeader = "%!PS\n\n"
+
+--0.815 0 0 0.815 10.0 10.0
+getIntroStuff :: String
+getIntroStuff = "matrix currentmatrix /originmat exch def\n/umatrix {originmat matrix concatmatrix setmatrix} def\n[0.815 0 0 0.815 10.0 10.0] umatrix\n\n"
+
+makeBox :: Int -> Int -> Int -> Int -> String
+makeBox ux uy lx ly = "0.1 setlinewidth\n"
+  ++ (show lx) ++ " " ++ (show ly) ++ " moveto\n"
+  ++ (show lx) ++ " " ++ (show uy) ++ " lineto\n"
+  ++ (show ux) ++ " " ++ (show uy) ++ " lineto\n"
+  ++ (show ux) ++ " " ++ (show ly) ++ " lineto\n"
+  ++ "closepath\nstroke\n\n"
+
+makeX :: Int -> Int -> Int -> Int -> String
+makeX ux uy lx ly = "0.1 setlinewidth\n"
+  ++ (show lx) ++ " " ++ (show ly) ++ " moveto\n"
+  ++ (show ux) ++ " " ++ (show uy) ++ " lineto\n"
+  ++ "closepath\nstroke\n\n"
+  ++ (show lx) ++ " " ++ (show uy) ++ " moveto\n"
+  ++ (show ux) ++ " " ++ (show ly) ++ " lineto\n"
+  ++ "closepath\nstroke\n\n"
+
+makeO :: Int -> Int -> Int -> String
+makeO x y r = "0.1 setlinewidth\n"
+  ++ (show x) ++ " " ++ (show y) ++ " " ++ (show r) ++ " 0 360 arc "
+  ++ "closepath\nstroke\n\n"
+
+drawGameTrees :: GameMap a -> String
+drawGameTrees (Ends b s gc) = drawBoard b s 8 gc
+drawGameTrees (Point b s gc ts) = drawBoard b s 8 gc ++ concat [drawGameTrees t | t <- ts]
+
+topLevelGC :: Int
+topLevelGC = 2
+
+testTree :: GameMap a
+testTree = Point [B,B,B,B,B,B,B,B,B] 243 topLevelGC [Ends [R,B,B,B,B,B,B,B,B] 81 8]
+
+data GameMap a = Ends Board Int Int | Point Board Int Int ([(GameMap a)])
+  deriving (Show)
+
+
+drawRed :: Board -> Int -> Int -> GameMap a
+drawRed mb gc s = if ((isWonFancy mb R) == True || isFull mb) then (Ends mb (div s 3) gc) else if ((isWonFancy mb G) == True) then (Ends mb (div s 3) gc) else (Point mb (div s 3) gc ([drawRed m gc (div s 3) | m <- redMoves]))
+  where bs = getPossibleBoards mb (findMoves mb) G
+        redMoves = [simMove b R (strategyForRed b) | b <- bs]
+
+
 
 
